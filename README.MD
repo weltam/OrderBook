@@ -7,13 +7,13 @@ an ultra-low-latency environment.  I limited myself to 5 days from
 clean slate to full implementation, so some concessions were made on
 the implementation - exception handling being the primary one.
 
-Goals:
+### Goals:
    Write human readable view of in-memory book every 10 messages
    Write machine-readable series of mid-quotes
    On each trade message, write total qty traded at most recent trade price
    Gracefully handle various garbage messages
 
-How to generate sample data and get performance data out of the software:
+### How to generate sample data and get performance data out of the software:
    OrderGenerator.pl should generate a stream of orders that you can
       use as input.
    An easy reference for looking at performance metrics:
@@ -24,7 +24,7 @@ How to generate sample data and get performance data out of the software:
       ./OrderBookProcessor Orders.txt > test.out 2>&1
       less -n test.out
 
-Development and testing environment:
+### Development and testing environment:
    2.7GHz, quad-core i7 920, HT enabled
    Ubuntu 13.10
    3.8.0-19-generic #30-Ubuntu SMP
@@ -33,12 +33,13 @@ Development and testing environment:
    boost 1.54.0
    perl v5.14.2
 
-Data Structure choices and Performance Aspects:
-   Meta data structure:
+### Data Structure choices and Performance Aspects:
+Meta data structure:
       std::map of doubly-linked lists of orders, one per side
       std::unordered_map of all orders to get memory address of
          underlying order object
-   Due to needint to keep sorted order on the book, I went with a
+
+Due to needint to keep sorted order on the book, I went with a
       std::map, rbtree implementation for the following performance
       profiles:
          Insert: logN price + hash order id
@@ -51,7 +52,8 @@ Data Structure choices and Performance Aspects:
          levels rather than being wide-open to all order_id's which
          should limit the scope of the logN cost we have to pay on
          lookup.
-   Originally I considered a vector with integer-based indexing on
+
+Originally I considered a vector with integer-based indexing on
       price with pre-reserved memory, however calculating midpoint on
       each update and checking for a crossed book would represent a
       worst-case O(n) on *every single order*, which was clearly
@@ -62,7 +64,8 @@ Data Structure choices and Performance Aspects:
       get O(1) on trade message, though the thought crossed my mind as
       your knowledge about market conditions is often-times based on
       getting a fill before the market- data update hits.
-   The map is of ulonglong price values.  On inbound messages, I parse
+
+The map is of ulonglong price values.  On inbound messages, I parse
       and *= 100 the value to avoid double and/or float comparisons in
       the order book and get single integer comparison on the map.  While
       this only supports prices up to 92.2 quadrillion, I chose to go
@@ -77,7 +80,7 @@ Data Structure choices and Performance Aspects:
       OrderBook in order to change over to that class.  In a production
       environment, I'd ask my client if it was acceptable for them to max
       at 92.2 quadrillion in price, and if so, go on with things.
-   The map has doubly-linked lists of pointers to orders hanging off
+The map has doubly-linked lists of pointers to orders hanging off
       them.  Rather than paying a O(n) worst-case to traverse that and
       finding an order, I created a hash for the orders that should
       average to O(1).  I didn't do analysis on the default hash
@@ -86,7 +89,7 @@ Data Structure choices and Performance Aspects:
       distributed.  I didn't use a standard container here as I wanted to
       be able to hash directly to a memory address and ask the container
       to delete by that address but still retain time priority.
-   I'd be interested to see how shared_ptr's behaved from boost
+I'd be interested to see how shared_ptr's behaved from boost
       instead of raw pointers - as it is now the pointer maintenance
       inside the OrderBook represents both a high risk and a point of
       high mental tax on future work on the code-base.
@@ -133,7 +136,7 @@ Data Structure choices and Performance Aspects:
          virtualize calls to the TSC.  3+ usec on most operations in this
          book instead of the 300-600 nanosecond on bare metal.
 
-Performance statistics:
+### Performance statistics:
    MidQuote print went from 3100 nanoseconds down to 679 median by
       implementing threaded logger_.  Note: io on critical path is bad
       (except network / necessity).
@@ -168,7 +171,7 @@ Performance statistics:
       99th:    2238
       99.99th: 10186
 
-Makefile:
+### Makefile:
    make release - build the release without performance metric
       gathering or debug symbols
    make profile - build the release with rdtsc performance metric
